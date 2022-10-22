@@ -41,7 +41,7 @@ func (s *Server) Serve(ln net.Listener) {
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
-			continue // 此处可以考虑休眠Duration
+			continue
 		}
 		go s.Server.ServeCodec(codec.NewServerCodec(conn, s.Serializer))
 	}

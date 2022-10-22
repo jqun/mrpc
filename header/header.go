@@ -101,8 +101,69 @@ func (r *RequestHeader) ResetHeader() {
 	r.RequestLen = 0
 }
 
+// ResponseHeader request header structure looks like:
+// +--------------+---------+----------------+-------------+----------+
+// | CompressType |    ID   |      Error     | ResponseLen | Checksum |
+// +--------------+---------+----------------+-------------+----------+
+// |    uint16    | uvarint | uvarint+string |    uvarint  |  uint32  |
+// +--------------+---------+----------------+-------------+----------+
 type ResponseHeader struct {
-	// todo
+	sync.RWMutex
+	CompressType compressor.CompressType
+	Id           uint64
+	Error        string
+	ResponseLen  uint32
+	Checksum     uint32
+}
+
+func (r *ResponseHeader) Marshal() []byte {
+	r.RLock()
+	defer r.RUnlock()
+
+	idx := 0
+	header := make([]byte, MaxHeaderSize+len(r.Error))
+
+	binary.LittleEndian.PutUint16(header[idx:], uint16(r.CompressType))
+	idx += Uint16Size
+
+	idx += binary.PutUvarint(header[idx:], r.Id)
+	idx += writeString(header[idx:], r.Error)
+	idx += binary.PutUvarint(header[idx:], uint64(r.ResponseLen))
+
+	binary.LittleEndian.PutUint32(header[idx:], r.Checksum)
+	idx += Uint32Size
+	return header[:idx]
+}
+
+func (r *ResponseHeader) Unmarshal(data []byte) (err error) {
+	r.Lock()
+	defer r.Unlock()
+	if len(data) == 0 {
+		return UnmarshalError
+	}
+
+	defer func() {
+		if e := recover(); e != nil {
+			err = UnmarshalError
+		}
+	}()
+
+	idx, size := 0, 0
+	r.CompressType = compressor.CompressType(binary.LittleEndian.Uint16(data[idx:]))
+	idx += Uint16Size
+
+	r.Id, size = binary.Uvarint(data[idx:])
+	idx += size
+
+	r.Error, size = readString(data[idx:])
+	idx += size
+
+	length, size := binary.Uvarint(data[idx:])
+	r.ResponseLen = uint32(length)
+	idx += size
+
+	r.Checksum = binary.LittleEndian.Uint32(data[idx:])
+	return
 }
 
 func writeString(data []byte, str string) int {
