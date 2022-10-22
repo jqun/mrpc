@@ -35,10 +35,10 @@ type RequestHeader struct {
 func (r *RequestHeader) Marshal() []byte {
 	r.RLock()
 	defer r.RUnlock()
-
-	// 封装压缩类型
 	idx := 0
+	// MaxHeaderSize = 2 + 10 + len(string) + 10 + 10 + 4
 	header := make([]byte, MaxHeaderSize+len(r.Method))
+
 	binary.LittleEndian.PutUint16(header[idx:], uint16(r.CompressType))
 	idx += Uint16Size
 
@@ -54,17 +54,15 @@ func (r *RequestHeader) Marshal() []byte {
 func (r *RequestHeader) Unmarshal(data []byte) (err error) {
 	r.Lock()
 	defer r.Unlock()
-
 	if len(data) == 0 {
 		return UnmarshalError
 	}
 
 	defer func() {
-		if e := recover(); e == nil {
+		if r := recover(); r != nil {
 			err = UnmarshalError
 		}
 	}()
-
 	idx, size := 0, 0
 	r.CompressType = compressor.CompressType(binary.LittleEndian.Uint16(data[idx:]))
 	idx += Uint16Size
@@ -80,6 +78,7 @@ func (r *RequestHeader) Unmarshal(data []byte) (err error) {
 	idx += size
 
 	r.Checksum = binary.LittleEndian.Uint32(data[idx:])
+
 	return
 }
 
@@ -119,9 +118,8 @@ type ResponseHeader struct {
 func (r *ResponseHeader) Marshal() []byte {
 	r.RLock()
 	defer r.RUnlock()
-
 	idx := 0
-	header := make([]byte, MaxHeaderSize+len(r.Error))
+	header := make([]byte, MaxHeaderSize+len(r.Error)) // prevent panic
 
 	binary.LittleEndian.PutUint16(header[idx:], uint16(r.CompressType))
 	idx += Uint16Size
@@ -143,11 +141,10 @@ func (r *ResponseHeader) Unmarshal(data []byte) (err error) {
 	}
 
 	defer func() {
-		if e := recover(); e != nil {
+		if r := recover(); r != nil {
 			err = UnmarshalError
 		}
 	}()
-
 	idx, size := 0, 0
 	r.CompressType = compressor.CompressType(binary.LittleEndian.Uint16(data[idx:]))
 	idx += Uint16Size
@@ -175,20 +172,12 @@ func (r *ResponseHeader) GetCompressType() compressor.CompressType {
 
 func (r *ResponseHeader) ResetHeader() {
 	r.Lock()
-	defer r.RUnlock()
+	defer r.Unlock()
 	r.Id = 0
 	r.CompressType = 0
 	r.Error = ""
 	r.Checksum = 0
 	r.ResponseLen = 0
-}
-
-func writeString(data []byte, str string) int {
-	idx := 0
-	idx += binary.PutUvarint(data, uint64(len(str)))
-	copy(data[idx:], str)
-	idx += len(str)
-	return idx
 }
 
 func readString(data []byte) (string, int) {
@@ -198,4 +187,12 @@ func readString(data []byte) (string, int) {
 	str := string(data[idx : idx+int(length)])
 	idx += len(str)
 	return str, idx
+}
+
+func writeString(data []byte, str string) int {
+	idx := 0
+	idx += binary.PutUvarint(data, uint64(len(str)))
+	copy(data[idx:], str)
+	idx += len(str)
+	return idx
 }

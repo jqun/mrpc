@@ -11,7 +11,7 @@ type ProtoSerializer struct{}
 
 var Proto = ProtoSerializer{}
 
-func (_ ProtoSerializer) Marshall(message interface{}) ([]byte, error) {
+func (_ ProtoSerializer) Marshal(message interface{}) ([]byte, error) {
 	var body proto.Message
 	if message == nil {
 		return []byte{}, nil
@@ -24,7 +24,7 @@ func (_ ProtoSerializer) Marshall(message interface{}) ([]byte, error) {
 	return proto.Marshal(body)
 }
 
-func (_ ProtoSerializer) Unmarshall(data []byte, message interface{}) error {
+func (_ ProtoSerializer) Unmarshal(data []byte, message interface{}) error {
 	var body proto.Message
 	if message == nil {
 		return nil

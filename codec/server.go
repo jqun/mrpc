@@ -44,12 +44,10 @@ func (s *serverCodec) ReadRequestHeader(r *rpc.Request) error {
 	if err != nil {
 		return err
 	}
-
 	err = s.request.Unmarshal(data)
 	if err != nil {
 		return err
 	}
-
 	s.mutex.Lock()
 	s.seq++
 	s.pending[s.seq] = &reqCtx{s.request.Id, s.request.GetCompressType()}
@@ -82,17 +80,18 @@ func (s *serverCodec) ReadRequestBody(param interface{}) error {
 		}
 	}
 
-	compressorType := s.request.GetCompressType()
-	if _, ok := compressor.Compressors[compressorType]; !ok {
+	if _, ok := compressor.
+		Compressors[s.request.GetCompressType()]; !ok {
 		return NotFoundCompressorError
 	}
 
-	req, err := compressor.Compressors[compressorType].Unzip(reqBody)
+	req, err := compressor.
+		Compressors[s.request.GetCompressType()].Unzip(reqBody)
 	if err != nil {
 		return err
 	}
 
-	return s.serializer.Unmarshall(req, param)
+	return s.serializer.Unmarshal(req, param)
 }
 
 func (s *serverCodec) WriteResponse(r *rpc.Response, param interface{}) error {
@@ -108,31 +107,30 @@ func (s *serverCodec) WriteResponse(r *rpc.Response, param interface{}) error {
 	if r.Error != "" {
 		param = nil
 	}
-
-	if _, ok := compressor.Compressors[reqCtx.compressType]; !ok {
+	if _, ok := compressor.
+		Compressors[reqCtx.compressType]; !ok {
 		return NotFoundCompressorError
 	}
 
 	var respBody []byte
 	var err error
 	if param != nil {
-		respBody, err = s.serializer.Marshall(param)
+		respBody, err = s.serializer.Marshal(param)
 		if err != nil {
 			return err
 		}
 	}
 
-	compressedRespBody, err := compressor.Compressors[reqCtx.compressType].Zip(respBody)
+	compressedRespBody, err := compressor.
+		Compressors[reqCtx.compressType].Zip(respBody)
 	if err != nil {
 		return err
 	}
-
 	h := header.ResponsePool.Get().(*header.ResponseHeader)
 	defer func() {
 		h.ResetHeader()
 		header.ResponsePool.Put(h)
 	}()
-
 	h.Id = reqCtx.requestId
 	h.Error = r.Error
 	h.ResponseLen = uint32(len(compressedRespBody))
