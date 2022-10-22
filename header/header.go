@@ -166,6 +166,13 @@ func (r *ResponseHeader) Unmarshal(data []byte) (err error) {
 	return
 }
 
+func (r *ResponseHeader) GetCompressType() compressor.CompressType {
+	r.RLock()
+	defer r.RUnlock()
+
+	return r.CompressType
+}
+
 func (r *ResponseHeader) ResetHeader() {
 	r.Lock()
 	defer r.RUnlock()
