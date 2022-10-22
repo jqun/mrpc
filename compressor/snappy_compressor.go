@@ -1,14 +1,35 @@
 package compressor
 
-type SnappyCompressor struct {}
+import (
+	"bytes"
+	"github.com/golang/snappy"
+	"io"
+	"io/ioutil"
+)
+
+type SnappyCompressor struct{}
 
 func (_ SnappyCompressor) Zip(data []byte) ([]byte, error) {
-	// todo
-	return nil, nil
+	buf := bytes.NewBuffer(nil)
+	w := snappy.NewBufferedWriter(buf)
+	defer w.Close()
+
+	_, err := w.Write(data)
+	if err != nil {
+		return nil, err
+	}
+	err = w.Flush()
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 func (_ SnappyCompressor) Unzip(data []byte) ([]byte, error) {
-	// todo
-	return nil, nil
+	r := snappy.NewReader(bytes.NewBuffer(data))
+	data, err := ioutil.ReadAll(r)
+	if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
+		return nil, err
+	}
+	return data, nil
 }
-
