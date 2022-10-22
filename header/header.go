@@ -166,6 +166,16 @@ func (r *ResponseHeader) Unmarshal(data []byte) (err error) {
 	return
 }
 
+func (r *ResponseHeader) ResetHeader() {
+	r.Lock()
+	defer r.RUnlock()
+	r.Id = 0
+	r.CompressType = 0
+	r.Error = ""
+	r.Checksum = 0
+	r.ResponseLen = 0
+}
+
 func writeString(data []byte, str string) int {
 	idx := 0
 	idx += binary.PutUvarint(data, uint64(len(str)))
