@@ -1,7 +1,7 @@
 package header
 
 import (
-	"fmt"
+	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
@@ -18,5 +18,5 @@ func TestResponseHeader_Marshal(t *testing.T) {
 
 	r2 := &ResponseHeader{}
 	_ = r2.Unmarshal(data)
-	fmt.Println(r2)
+	assert.Equal(t, data, r2.Marshal())
 }
